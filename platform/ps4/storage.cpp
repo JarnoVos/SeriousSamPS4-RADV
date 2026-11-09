@@ -152,41 +152,62 @@ static char selectedUserRoot[64] = "/data/serioussamse/";
 static char selectedUserRoot[64] = "/data/serioussam/";
 #endif
 
+struct UserDirPrep {
+    const char* host;
+    int ans;
+};
+
+// Runs with root credentials and the sandbox directory left as it was.
+// A full jailbreak before the mount points getcwd at the real root, so the
+// mount lands outside the sandbox and /ssam_user does not exist afterwards.
+void prepareUserTree(void* argument) {
+    UserDirPrep* prep = static_cast<UserDirPrep*>(argument);
+    const char* subs[] = {"", "/SaveGame", "/Controls", "/Scripts", "/Data", "/Temp",
+                          "/Demos", "/Players", "/ScreenShots", "/Levels"};
+    prep->ans = 0;
+    for (const char* sub : subs) {
+        char path[512];
+        std::snprintf(path, sizeof(path), "%s%s", prep->host, sub);
+        if (mkdir(path, 0777) != 0 && errno != EEXIST)
+            prep->ans = errno;
+        if (chmod(path, 0777) != 0 && !prep->ans)
+            prep->ans = errno;
+    }
+}
+
+bool canWrite(const char* dir) {
+    char probe[512];
+    std::snprintf(probe, sizeof(probe), "%sSeriousSam.write", dir);
+    FILE* file = std::fopen(probe, "w");
+    if (!file) return false;
+    std::fputs("ok\n", file);
+    std::fclose(file);
+    std::remove(probe);
+    return true;
+}
+
 StorageStatus prepareUserDirectoryBody() {
     char host[256];
     std::snprintf(host, sizeof(host), "/data/%s", userFolder);
     std::snprintf(selectedUserRoot, sizeof(selectedUserRoot), "/data/%s/", userFolder);
-    jbc_cred original{};
-    if (jbc_get_cred(&original)) return StorageStatus::ServiceUnavailable;
-    jbc_cred external = original;
-    if (jbc_jailbreak_cred(&external) || jbc_set_cred(&external)) {
-        if (!restore(original)) return StorageStatus::RestoreFailed;
-        return StorageStatus::AccessFailed;
+    UserDirPrep prep{host, -1};
+    jbc_run_as_root(prepareUserTree, &prep, CWD_KEEP);
+    if (prep.ans)
+        std::fprintf(stderr, "PS4 user tree %s status %d\n", host, prep.ans);
+    if (canWrite(selectedUserRoot)) {
+        std::fprintf(stderr, "PS4 user dir: %s\n", selectedUserRoot);
+        return StorageStatus::Ready;
     }
-    if (mkdir(host, 0777) != 0 && errno != EEXIST)
-        std::fprintf(stderr, "PS4 user dir %s not created (%d)\n", host, errno);
-    // mkdir honors the root umask, which leaves a directory the game cannot write.
-    if (chmod(host, 0777) != 0)
-        std::fprintf(stderr, "PS4 user dir %s not writable (%d)\n", host, errno);
-    if (!restore(original)) return StorageStatus::RestoreFailed;
     const int error = jbc_mount_in_sandbox(host, "ssam_user");
     if (!error) ownedUserMount = true;
-    if (!restore(original)) return StorageStatus::RestoreFailed;
-    if (!error) {
-        jbc_cred rooted = original;
-        if (!jbc_jailbreak_cred(&rooted) && !jbc_set_cred(&rooted)) {
-            if (chmod("/ssam_user", 0777) != 0)
-                std::fprintf(stderr, "PS4 user mount not writable (%d)\n", errno);
-            if (!restore(original)) return StorageStatus::RestoreFailed;
-        }
+    if (!error && canWrite("/ssam_user/")) {
+        std::snprintf(selectedUserRoot, sizeof(selectedUserRoot), "/ssam_user/");
+        std::fprintf(stderr, "PS4 user dir: %s -> %s\n", host, selectedUserRoot);
+        return StorageStatus::Ready;
     }
-    if (error) {
-        std::fprintf(stderr, "PS4 user dir mount failed %#x, saves stay at %s\n", error, selectedUserRoot);
-        return StorageStatus::MountFailed;
-    }
-    std::snprintf(selectedUserRoot, sizeof(selectedUserRoot), "/ssam_user/");
-    std::fprintf(stderr, "PS4 user dir: %s -> %s\n", host, selectedUserRoot);
-    return StorageStatus::Ready;
+    std::fprintf(stderr, "PS4 user dir not writable at %s or /ssam_user (%d, mount %#x)\n",
+                 selectedUserRoot, errno, error);
+    return StorageStatus::MountFailed;
 }
 
 const char* userRootStorage() { return selectedUserRoot; }
