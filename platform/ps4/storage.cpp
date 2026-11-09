@@ -181,13 +181,9 @@ StorageStatus prepareUserDirectoryBody() {
 const char* userRootStorage() { return selectedUserRoot; }
 }
 
-StorageStatus prepareUserDirectory() { return prepareUserDirectoryBody(); }
-const char* currentUserRoot() { return userRootStorage(); }
-}
-
 static char selectedDataRoot[512];
 const char* ss_ps4_data_root() { return selectedDataRoot; }
-const char* ss_ps4_user_root() { return ps4::currentUserRoot(); }
+const char* ss_ps4_user_root() { return ps4::userRootStorage(); }
 
 // Called before engine initialization; keep the mounts alive for all archive reads.
 bool ss_ps4_init_data() {
@@ -219,7 +215,7 @@ bool ss_ps4_init_data() {
     // The engine turns "<root>/Bin/" into the absolute data directory. A real
     // PS4 rejects chdir outside /app0, and leaving main calls a forbidden _exit.
     std::snprintf(selectedDataRoot, sizeof(selectedDataRoot), "%s", active);
-    const ps4::StorageStatus userDir = ps4::prepareUserDirectory();
+    const ps4::StorageStatus userDir = ps4::prepareUserDirectoryBody();
     if (userDir == ps4::StorageStatus::RestoreFailed) return false;
     if (chdir("/app0"))
         std::fprintf(stderr, "Continuing without /app0 as the working directory\n");
