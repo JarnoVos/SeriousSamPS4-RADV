@@ -1,0 +1,26 @@
+--- a/SamTFE/Sources/Engine/Base/Unix/UnixFileSystem.cpp
++++ b/SamTFE/Sources/Engine/Base/Unix/UnixFileSystem.cpp
+@@ -94,7 +94,10 @@
+ 
+ CUnixFileSystem::CUnixFileSystem(const char *argv0, const char *gamename)
+ {
+-    exePath = SDL_strdup("/app0/Bin/");
++    extern const char* ss_ps4_data_root();
++    char dataPath[600];
++    SDL_snprintf(dataPath, sizeof(dataPath), "%s/Bin/", ss_ps4_data_root());
++    exePath = SDL_strdup(dataPath);
+     userDir = SDL_strdup("/data/serioussam/");
+ }
+ 
+--- a/SamTFE/Sources/SeriousSam/SeriousSam.cpp
++++ b/SamTFE/Sources/SeriousSam/SeriousSam.cpp
+@@ -1793,7 +1793,8 @@
+   setvbuf(stdout, NULL, _IONBF, 0);
+   setvbuf(stderr, NULL, _IONBF, 0);
+   vk_ps4_log_open("/data/serioussam/vulkan.log");
+-  chdir("/app0");
++  extern bool ss_ps4_init_data();
++  if (!ss_ps4_init_data()) return 1;
+   fprintf(stderr, "PS4 Serious Sam main entered\n");
+   #ifdef BETAEXPIRE
+     // !!! FIXME: This is Unix-centric (at least, non-win32) if put in main().

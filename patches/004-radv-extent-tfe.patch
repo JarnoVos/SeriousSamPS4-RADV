@@ -1,0 +1,76 @@
+--- a/SamTFE/Sources/Engine/Graphics/GfxLibrary.cpp
++++ b/SamTFE/Sources/Engine/Graphics/GfxLibrary.cpp
+@@ -17,1 +17,2 @@
+ #include "Engine/StdH.h"
++extern "C" void ss_ps4_radv_extent(int *out_w, int *out_h);
+@@ -1775,7 +1776,9 @@ void CGfxLibrary::CreateWindowCanvas(void *hWnd, CViewPort **ppvpNew, CDrawPort
+   VkSurfaceCapabilitiesKHR capabilities;
+   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gl_SvkMain->gl_VkPhysDevice, gl_SvkMain->gl_VkSurface, &capabilities);
+ 
+-  width = 1280; height = 720;
++  int ss_w = 0, ss_h = 0;
++  ss_ps4_radv_extent(&ss_w, &ss_h);
++  width = ss_w; height = ss_h;
+ 
+   width = CLAMP(width, (int32_t)capabilities.minImageExtent.width, (int32_t)capabilities.maxImageExtent.width);
+   height = CLAMP(height, (int32_t)capabilities.minImageExtent.height, (int32_t)capabilities.maxImageExtent.height);
+--- a/SamTFE/Sources/Engine/Graphics/Gfx_Vulkan.cpp
++++ b/SamTFE/Sources/Engine/Graphics/Gfx_Vulkan.cpp
+@@ -16,1 +16,2 @@
+ #include <Engine/StdH.h>
++extern "C" void ss_ps4_radv_extent(int *out_w, int *out_h);
+@@ -613,7 +614,7 @@ BOOL SvkMain::SetCurrentViewport_Vulkan(CViewPort* pvp)
+   const PIX pixWinSizeJ = rectWindow.bottom - rectWindow.top;
+ #else
+   int width, height;
+-  width = 1280; height = 720;
++  ss_ps4_radv_extent(&width, &height);
+   const PIX pixWinSizeI = (PIX) width;
+   const PIX pixWinSizeJ = (PIX) height;
+ #endif
+--- a/SamTFE/Sources/Engine/Graphics/Vulkan/SvkSwapchain.cpp
++++ b/SamTFE/Sources/Engine/Graphics/Vulkan/SvkSwapchain.cpp
+@@ -16,1 +16,2 @@
+ #include "Engine/StdH.h"
++extern "C" void ss_ps4_radv_extent(int *out_w, int *out_h);
+@@ -33,7 +34,9 @@ void SvkMain::CreateSwapchain(int32_t width, int32_t height)
+   VkSurfaceCapabilitiesKHR capabilities;
+   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gl_VkPhysDevice, gl_VkSurface, &capabilities);
+ 
+-  width = 1280; height = 720;
++  int ss_w = 0, ss_h = 0;
++  ss_ps4_radv_extent(&ss_w, &ss_h);
++  width = ss_w; height = ss_h;
+ 
+   width = CLAMP(width, (int32_t)capabilities.minImageExtent.width, (int32_t)capabilities.maxImageExtent.width);
+   height = CLAMP(height, (int32_t)capabilities.minImageExtent.height, (int32_t)capabilities.maxImageExtent.height);
+@@ -205,7 +208,9 @@ void SvkMain::RecreateSwapchain(int32_t newWidth, int32_t newHeight)
+   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gl_VkPhysDevice, gl_VkSurface, &capabilities);
+   int32_t width;
+   int32_t height;
+-  width = 1280; height = 720;
++  int ss_w = 0, ss_h = 0;
++  ss_ps4_radv_extent(&ss_w, &ss_h);
++  width = ss_w; height = ss_h;
+ 
+   width = CLAMP(width, (int32_t)capabilities.minImageExtent.width, (int32_t)capabilities.maxImageExtent.width);
+   height = CLAMP(height, (int32_t)capabilities.minImageExtent.height, (int32_t)capabilities.maxImageExtent.height);
+--- a/SamTFE/Sources/SeriousSam/SeriousSam.cpp
++++ b/SamTFE/Sources/SeriousSam/SeriousSam.cpp
+@@ -17,1 +17,2 @@
+ #include "SeriousSam/StdH.h"
++extern "C" void ss_ps4_radv_extent(int *out_w, int *out_h);
+@@ -1970,9 +1971,11 @@ const INDEX ctDefaultModes = ARRAYCOUNT(aDefaultModes);
+ void StartNewMode( enum GfxAPIType eGfxAPI, INDEX iAdapter, PIX pixSizeI, PIX pixSizeJ, PIX aspSizeI, PIX aspSizeJ, enum DisplayDepth eColorDepth, BOOL bFullScreenMode, BOOL bBorderLessMode)
+ {
+-  // The native VideoOut swapchain has a fixed console mode.
++  // One mode, the swapchain that is actually registered with VideoOut.
+   eGfxAPI = (GfxAPIType)1;
+   sam_iGfxAPI = 1;
+-  pixSizeI = 1280; pixSizeJ = 720;
++  int ss_w = 0, ss_h = 0;
++  ss_ps4_radv_extent(&ss_w, &ss_h);
++  pixSizeI = ss_w; pixSizeJ = ss_h;
+   aspSizeI = 16; aspSizeJ = 9;
+   bFullScreenMode = FALSE; bBorderLessMode = FALSE;
+   CPrintF( TRANS("\n* START NEW DISPLAY MODE ...\n"));

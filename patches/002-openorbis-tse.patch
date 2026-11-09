@@ -1,0 +1,807 @@
+diff --git a/SamTSE/Sources/CMakeLists.txt b/SamTSE/Sources/CMakeLists.txt
+index 6c52663..8c47017 100644
+--- a/SamTSE/Sources/CMakeLists.txt
++++ b/SamTSE/Sources/CMakeLists.txt
+@@ -397,9 +397,9 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_
+                         add_compile_options(-march=mips32r2)
+ 		else()
+             if(LOCAL_INSTALL)
+-			    add_compile_options(-march=native)
++			    add_compile_options(-march=btver2)
+             elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i386|i586|i686|x86|amd64|AMD64|x86_64")
+-			    add_compile_options(-march=native) # set mtune=generic if nedded
++			    add_compile_options(-march=btver2) # set mtune=generic if nedded
+ 		    endif()
+ 		endif()
+ 	endif()
+@@ -511,7 +511,6 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_
+ 		add_definitions(-DPLATFORM_UNIX=1)
+     		add_definitions(-DPLATFORM_MACOSX=1)
+     		add_definitions(-DPRAGMA_ONCE=1)
+-    		include_directories("/usr/local/include")
+ 		include_directories("/usr/X11/include/")
+ 	elseif(WINDOWS)
+ 		add_definitions(-DPLATFORM_WIN32=1)
+@@ -531,7 +530,6 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_C_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_
+     		add_definitions(-D_FILE_OFFSET_BITS=64)
+     		add_definitions(-D_LARGEFILE_SOURCE=1)
+     		add_definitions(-DPRAGMA_ONCE=1)
+-    		include_directories("/usr/local/include")
+ 	endif()
+ 	
+         if(MACOSX OR LINUX OR FREEBSD)
+@@ -975,7 +973,7 @@ add_custom_target(ParseEntities${MP} DEPENDS ${ENTITIES_H})
+ 
+ set(ENTITIESMPLIB "Entities${MP}${DEBUGSUFFIX}")
+ if(INTERNAL_NAME STREQUAL "serioussam")
+- add_library(${ENTITIESMPLIB} SHARED
++ add_library(${ENTITIESMPLIB} STATIC
+      ${ENTITIES_CPP}
+      Entities/Common/Common.cpp
+      Entities/Common/Debris.cpp
+@@ -985,7 +983,7 @@ if(INTERNAL_NAME STREQUAL "serioussam")
+      Entities/Common/HUD.cpp
+  )
+ else()
+- add_library(${ENTITIESMPLIB} SHARED
++ add_library(${ENTITIESMPLIB} STATIC
+      ${ENTITIES_CPP}
+      EntitiesMP/Common/Common.cpp
+  	 EntitiesMP/Common/Particles.cpp
+@@ -1001,7 +999,7 @@ endif()
+ add_dependencies(${ENTITIESMPLIB} ParseEntities${MP})
+ 
+ set(GAMEMPLIB "Game${MP}${DEBUGSUFFIX}")
+-add_library(${GAMEMPLIB} SHARED
++add_library(${GAMEMPLIB} STATIC
+     GameMP/Camera.cpp
+     GameMP/CompMessage.cpp
+     GameMP/CompModels.cpp
+@@ -1022,7 +1020,7 @@ add_dependencies(${GAMEMPLIB} ParseEntities${MP})
+ 
+ if(NOT XPLUS)
+ set(SHADERSLIB "Shaders${MP}${DEBUGSUFFIX}")
+-add_library(${SHADERSLIB} SHARED
++add_library(${SHADERSLIB} STATIC
+     Shaders/AddShader.cpp
+     Shaders/AddShaderDS.cpp
+     Shaders/BaseShader.cpp
+@@ -1160,7 +1158,7 @@ set(ENGINE_SRCS
+     Engine/Base/IFeel.cpp
+     Engine/Base/iconvlite.cpp
+     Engine/Base/Unix/UnixFileSystem.cpp
+-    Engine/Base/Unix/UnixDynamicLoader.cpp
++    ${SS_PS4_ROOT}/platform/ps4/static_loader.cpp
+     Engine/Base/SDL/SDLTimer.cpp
+     Engine/Base/SDL/SDLInput.cpp
+     Engine/Base/SDL/SDLEvents.cpp
+@@ -1343,7 +1341,7 @@ set(ENGINE_SRCS
+     Engine/Base/IFeel.cpp
+     Engine/Base/iconvlite.cpp
+     Engine/Base/Unix/UnixFileSystem.cpp
+-    Engine/Base/Unix/UnixDynamicLoader.cpp
++    ${SS_PS4_ROOT}/platform/ps4/static_loader.cpp
+     Engine/Base/SDL/SDLTimer.cpp
+     Engine/Base/SDL/SDLInput.cpp
+     Engine/Base/SDL/SDLEvents.cpp
+@@ -1479,7 +1477,7 @@ set(ENGINE_SRCS
+ endif()
+ 
+ set(ENGINELIB "Engine${MP}${DEBUGSUFFIX}")
+-add_library(${ENGINELIB} SHARED
++add_library(${ENGINELIB} STATIC
+      ${ENGINE_SRCS}
+ )
+ if(MACOSX)
+@@ -1605,7 +1603,7 @@ set(AMP11LIB_SOURCE_FILES
+     amp11lib/ampdec.h
+     amp11lib/ampsynth.cpp)
+ 
+-add_library(amp11lib${MP} SHARED ${AMP11LIB_SOURCE_FILES})
++add_library(amp11lib${MP} STATIC ${AMP11LIB_SOURCE_FILES})
+ endif()
+ 
+ if(MACOSX)
+@@ -1844,3 +1842,7 @@ if(NOT LOCAL_INSTALL AND NOT XPLUS)
+ endif()
+ 
+ # end of CMakeLists.txt ...
++
++if(SERIOUSSAM_PS4)
++  include("${SS_PS4_ROOT}/cmake/ps4-targets.cmake")
++endif()
+diff --git a/SamTSE/Sources/Engine/Base/SDL/SDLInput.cpp b/SamTSE/Sources/Engine/Base/SDL/SDLInput.cpp
+index d8bba52..70e8ae8 100644
+--- a/SamTSE/Sources/Engine/Base/SDL/SDLInput.cpp
++++ b/SamTSE/Sources/Engine/Base/SDL/SDLInput.cpp
+@@ -104,8 +104,8 @@ static const KeyConversion _akcKeys[] = {
+   { KID_I               , SDLK_i, INTNAME("I")},
+   { KID_O               , SDLK_o, INTNAME("O")},
+   { KID_P               , SDLK_p, INTNAME("P")},
+-  { KID_LBRACKET        , SDLK_RIGHTPAREN, INTNAME("[")},
+-  { KID_RBRACKET        , SDLK_RIGHTPAREN, INTNAME("]")},
++  { KID_LBRACKET        , SDLK_LEFTBRACKET, INTNAME("[")},
++  { KID_RBRACKET        , SDLK_RIGHTBRACKET, INTNAME("]")},
+   { KID_BACKSLASH       , SDLK_BACKSLASH,  INTNAME("\\")},
+ 
+ // 2nd alpha row            
+@@ -274,13 +274,13 @@ static void SetKeyFromEvent(const SDL_Event *event, const BOOL bDown)
+     if (inp_bSDLGrabInput)
+     {
+       // turn off input grab.
+-      SDL_SetRelativeMouseMode(SDL_FALSE);
++      (void)0; // Native PS4 input does not capture a desktop mouse.
+       inp_bSDLGrabInput = FALSE;
+     } // if
+     else
+     {
+       // turn on input grab.
+-      SDL_SetRelativeMouseMode(SDL_TRUE);
++      (void)0; // Native PS4 input does not capture a desktop mouse.
+       inp_bSDLGrabInput = TRUE;
+     } // else
+ 
+@@ -304,6 +304,7 @@ static void SetKeyFromEvent(const SDL_Event *event, const BOOL bDown)
+   if (iKID>=0 && iKID<static_cast<INDEX>(ARRAYCOUNT(_abKeysPressed))) {
+     //CPrintF("%s: %d\n", _pInput->inp_strButtonNames[iKID], bDown);
+     _abKeysPressed[iKID] = bDown;
++    fprintf(stderr, "PS4 INPUT kid=%d down=%d enabled=%d\n", int(iKID), int(bDown), int(_pInput->IsInputEnabled()));
+   }
+ }
+ 
+@@ -352,11 +353,13 @@ static void sdl_event_handler(const SDL_Event *event)
+ //  making sure all SDL events tunnel through one function.
+ //   DO NOT DIRECTLY MESS WITH THE SDL EVENT QUEUE THROUGH ANY OTHER FUNCTION.
+ //   Parameters/retval are same as SDL_PollEvent().
++extern void ss_ps4_poll_pad();
+ int SE_SDL_InputEventPoll(SDL_Event *sdlevent)
+ {
+     ASSERT(sdlevent != NULL);
+     CTSingleLock slInput(&sl_csInput, FALSE);
+     if(slInput.TryToLock()) {
++      ss_ps4_poll_pad();
+       const int retval = SDL_PollEvent(sdlevent);
+       if (retval)
+           sdl_event_handler(sdlevent);
+@@ -641,7 +644,7 @@ void CInput::EnableInput(HWND hwnd)
+   inp_ptOldMousePos.x = mousex;
+   inp_ptOldMousePos.y = mousey;
+ 
+-  SDL_SetRelativeMouseMode(inp_bSDLGrabInput ? SDL_TRUE : SDL_FALSE);
++  (void)0; // Native PS4 input does not capture a desktop mouse.
+ 
+   // save system mouse settings
+   memset(&inp_mscMouseSettings, '\0', sizeof (MouseSpeedControl));
+@@ -673,7 +676,7 @@ void CInput::DisableInput( void)
+   SDL_JoystickEventState(SDL_DISABLE);
+ 
+   // show mouse on screen
+-  SDL_SetRelativeMouseMode(SDL_FALSE);
++  (void)0; // Native PS4 input does not capture a desktop mouse.
+ 
+   // eventually disable 2nd mouse
+ #if 0
+@@ -685,7 +688,7 @@ void CInput::DisableInput( void)
+   inp_bPollJoysticks = FALSE;
+ }
+ 
+-#define USE_MOUSEWARP 1
++// PS4 stick motion arrives as SDL events; there is no desktop mouse to poll.
+ // Define this to use GetMouse instead of using Message to read mouse coordinates
+ 
+ // blank any queued mousemove events...SDLInput.cpp needs this when
+diff --git a/SamTSE/Sources/Engine/Base/Timer.cpp b/SamTSE/Sources/Engine/Base/Timer.cpp
+index e074e18..9b8c465 100644
+--- a/SamTSE/Sources/Engine/Base/Timer.cpp
++++ b/SamTSE/Sources/Engine/Base/Timer.cpp
+@@ -33,7 +33,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
+ #include <pthread.h>
+ #endif
+ 
+-#if PLATFORM_FREEBSD
++#if PLATFORM_FREEBSD && !defined(__PS4__)
+ #include <sys/types.h>
+ #include <sys/sysctl.h>
+ #endif
+@@ -569,7 +569,7 @@ CTimer::CTimer(BOOL bInterrupt /*=TRUE*/)
+ #elif PLATFORM_MACOSX
+   tm_llPerformanceCounterFrequency = tm_llCPUSpeedHZ = ((__int64) GetCPUSpeed()) * 1000000;
+ 
+-#elif PLATFORM_FREEBSD
++#elif PLATFORM_FREEBSD && !defined(__PS4__)
+   __int64 mhz = 0;
+   size_t len = sizeof(mhz);
+ 
+diff --git a/SamTSE/Sources/Engine/Base/Unix/UnixFileSystem.cpp b/SamTSE/Sources/Engine/Base/Unix/UnixFileSystem.cpp
+index 6bf7d99..970474a 100644
+--- a/SamTSE/Sources/Engine/Base/Unix/UnixFileSystem.cpp
++++ b/SamTSE/Sources/Engine/Base/Unix/UnixFileSystem.cpp
+@@ -94,8 +94,8 @@ BOOL CFileSystem::IsDirectory(const char *fname)
+ 
+ CUnixFileSystem::CUnixFileSystem(const char *argv0, const char *gamename)
+ {
+-    exePath = SDL_GetBasePath();
+-    userDir = SDL_GetPrefPath("Serious-Engine", gamename);
++    exePath = SDL_strdup("/app0/Bin/");
++    userDir = SDL_strdup("/data/serioussamse/");
+ }
+ 
+ 
+diff --git a/SamTSE/Sources/Engine/Graphics/GfxLibrary.cpp b/SamTSE/Sources/Engine/Graphics/GfxLibrary.cpp
+index d58473a..9dc35fd 100644
+--- a/SamTSE/Sources/Engine/Graphics/GfxLibrary.cpp
++++ b/SamTSE/Sources/Engine/Graphics/GfxLibrary.cpp
+@@ -1775,7 +1775,7 @@ void CGfxLibrary::CreateWindowCanvas(void *hWnd, CViewPort **ppvpNew, CDrawPort
+   VkSurfaceCapabilitiesKHR capabilities;
+   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gl_SvkMain->gl_VkPhysDevice, gl_SvkMain->gl_VkSurface, &capabilities);
+ 
+-  SDL_Vulkan_GetDrawableSize((SDL_Window *)hWnd, &width, &height);
++  width = 1280; height = 720;
+ 
+   width = CLAMP(width, (int32_t)capabilities.minImageExtent.width, (int32_t)capabilities.maxImageExtent.width);
+   height = CLAMP(height, (int32_t)capabilities.minImageExtent.height, (int32_t)capabilities.maxImageExtent.height);
+diff --git a/SamTSE/Sources/Engine/Graphics/Gfx_Vulkan.cpp b/SamTSE/Sources/Engine/Graphics/Gfx_Vulkan.cpp
+index 9987ddb..6a8ced6 100644
+--- a/SamTSE/Sources/Engine/Graphics/Gfx_Vulkan.cpp
++++ b/SamTSE/Sources/Engine/Graphics/Gfx_Vulkan.cpp
+@@ -169,7 +169,7 @@ BOOL SvkMain::InitDriver_Vulkan()
+   appInfo.applicationVersion = VK_MAKE_VERSION(1, 10, 6);
+   appInfo.pEngineName = "Serious Engine 1";
+   appInfo.engineVersion = VK_MAKE_VERSION(1, 10, 6);
+-  appInfo.apiVersion = VK_API_VERSION_1_2;
++  appInfo.apiVersion = VK_API_VERSION_1_1;
+ 
+ 
+   VkInstanceCreateInfo instanceInfo = {};
+@@ -385,7 +385,7 @@ void SvkMain::Reset_Vulkan()
+   gl_VkSwapchain = VK_NULL_HANDLE;
+   gl_VkSurfColorFormat = VK_FORMAT_B8G8R8A8_UNORM;
+   gl_VkSurfColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+-  gl_VkSurfDepthFormat = VK_FORMAT_D24_UNORM_S8_UINT;
++  gl_VkSurfDepthFormat = VK_FORMAT_D32_SFLOAT_S8_UINT;
+   gl_VkSurfPresentMode = VK_PRESENT_MODE_FIFO_KHR;
+   gl_VkCmdBufferCurrent = 0;
+   gl_VkCmdIsRecording = false;
+@@ -613,7 +613,7 @@ BOOL SvkMain::SetCurrentViewport_Vulkan(CViewPort* pvp)
+   const PIX pixWinSizeJ = rectWindow.bottom - rectWindow.top;
+ #else
+   int width, height;
+-  SDL_Vulkan_GetDrawableSize((SDL_Window *)pvp->vp_hWnd, &width, &height);
++  width = 1280; height = 720;
+   const PIX pixWinSizeI = (PIX) width;
+   const PIX pixWinSizeJ = (PIX) height;
+ #endif
+@@ -746,7 +746,8 @@ BOOL SvkMain::InitSurface_Win32(HINSTANCE hinstance, HWND hwnd)
+ #else
+ SDL_bool SvkMain::InitSurface_SDL(VkInstanceCreateInfo InstanceIn, SDL_Window * _hwndMain)
+ {
+-    SDL_bool r = SDL_Vulkan_CreateSurface(_hwndMain, gl_VkInstance, &gl_VkSurface);
++    gl_VkSurface = VK_NULL_HANDLE;
++    SDL_bool r = SDL_TRUE; // Native PS4 ICD presents directly through VideoOut.
+     return r;
+ }
+ #endif
+@@ -1168,34 +1169,16 @@ void SvkMain::DrawTriangles(uint32_t indexCount, const uint32_t *indices)
+     gl_VkPreviousPipeline = &ps;
+   }
+ 
+-  VkDescriptorSet sets[5] = { uniformBuffer.sdu_DescriptorSet };
++  uint32_t textureIds[4];
+   float textureColorScale = 1.0f;
+-
+-  // bind texture descriptors
+-  for (uint32_t i = 0; i < GFX_MAXTEXUNITS; i++)
+-  {
+-    if (GFX_abTexture[i])
+-    {
+-      VkDescriptorSet textureDescSet = GetTextureDescriptor(gl_VkActiveTextures[i]);
+-     
+-      if (textureDescSet != VK_NULL_HANDLE)
+-      {
+-        sets[i + 1] = textureDescSet;
+-
+-        ASSERT(GFX_iTexModulation[i] == 1 || GFX_iTexModulation[i] == 2);
+-        textureColorScale *= GFX_iTexModulation[i];
+-        continue;
+-      }
+-    }
+-
+-    sets[i + 1] = (VkDescriptorSet)_no_ulTextureDescSet;
++  for (unsigned i=0; i<4; ++i) {
++    textureIds[i] = GFX_abTexture[i] ? gl_VkActiveTextures[i] : gl_VkEmptyTextureId;
++    if (GFX_abTexture[i]) textureColorScale *= GFX_iTexModulation[i];
+   }
+-
+-  // set uniform and textures
+-  vkCmdBindDescriptorSets(
+-    cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, gl_VkPipelineLayout,
+-    0, 5, sets,
+-    1, &descSetOffset);
++  VkDescriptorSet sets[2] = {uniformBuffer.sdu_DescriptorSet, GetTexturesDescriptor(textureIds)};
++  if (!sets[1]) return;
++  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, gl_VkPipelineLayout,
++                          0, 2, sets, 1, &descSetOffset);
+ 
+   // set texture color scales
+   vkCmdPushConstants(cmd, gl_VkPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 
+diff --git a/SamTSE/Sources/Engine/Graphics/Vulkan/Shaders/Textured.frag b/SamTSE/Sources/Engine/Graphics/Vulkan/Shaders/Textured.frag
+index 06833f7..0e94fd4 100644
+--- a/SamTSE/Sources/Engine/Graphics/Vulkan/Shaders/Textured.frag
++++ b/SamTSE/Sources/Engine/Graphics/Vulkan/Shaders/Textured.frag
+@@ -4,9 +4,9 @@
+ #extension GL_ARB_shading_language_420pack : enable
+ 
+ layout (set = 1, binding = 0) uniform sampler2D aTexture0;
+-layout (set = 2, binding = 0) uniform sampler2D aTexture1;
+-layout (set = 3, binding = 0) uniform sampler2D aTexture2;
+-layout (set = 4, binding = 0) uniform sampler2D aTexture3;
++layout (set = 1, binding = 1) uniform sampler2D aTexture1;
++layout (set = 1, binding = 2) uniform sampler2D aTexture2;
++layout (set = 1, binding = 3) uniform sampler2D aTexture3;
+ 
+ layout (location = 0) in vec4 inColor;
+ layout (location = 1) in vec4 inTexCoord01;
+diff --git a/SamTSE/Sources/Engine/Graphics/Vulkan/Shaders/TexturedAlpha.frag b/SamTSE/Sources/Engine/Graphics/Vulkan/Shaders/TexturedAlpha.frag
+index 1ffbaa6..8528688 100644
+--- a/SamTSE/Sources/Engine/Graphics/Vulkan/Shaders/TexturedAlpha.frag
++++ b/SamTSE/Sources/Engine/Graphics/Vulkan/Shaders/TexturedAlpha.frag
+@@ -4,9 +4,9 @@
+ #extension GL_ARB_shading_language_420pack : enable
+ 
+ layout (set = 1, binding = 0) uniform sampler2D aTexture0;
+-layout (set = 2, binding = 0) uniform sampler2D aTexture1;
+-layout (set = 3, binding = 0) uniform sampler2D aTexture2;
+-layout (set = 4, binding = 0) uniform sampler2D aTexture3;
++layout (set = 1, binding = 1) uniform sampler2D aTexture1;
++layout (set = 1, binding = 2) uniform sampler2D aTexture2;
++layout (set = 1, binding = 3) uniform sampler2D aTexture3;
+ 
+ layout (location = 0) in vec4 inColor;
+ layout (location = 1) in vec4 inTexCoord01;
+diff --git a/SamTSE/Sources/Engine/Graphics/Vulkan/SvkDescriptors.cpp b/SamTSE/Sources/Engine/Graphics/Vulkan/SvkDescriptors.cpp
+index d002bc6..9ff28e8 100644
+--- a/SamTSE/Sources/Engine/Graphics/Vulkan/SvkDescriptors.cpp
++++ b/SamTSE/Sources/Engine/Graphics/Vulkan/SvkDescriptors.cpp
+@@ -46,8 +46,10 @@ void SvkMain::CreateDescriptorSetLayouts()
+ 
+   VkDescriptorSetLayoutCreateInfo samplerLayoutInfo = {};
+   samplerLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+-  samplerLayoutInfo.bindingCount = 1;
+-  samplerLayoutInfo.pBindings = &samplerBinding;
++  VkDescriptorSetLayoutBinding samplers[4];
++  for (unsigned i=0; i<4; ++i) { samplers[i]=samplerBinding; samplers[i].binding=i; }
++  samplerLayoutInfo.bindingCount = 4;
++  samplerLayoutInfo.pBindings = samplers;
+ 
+   r = vkCreateDescriptorSetLayout(gl_VkDevice, &samplerLayoutInfo, nullptr, &gl_VkDescSetLayoutTexture);
+   VK_CHECKERROR(r);
+@@ -55,9 +57,6 @@ void SvkMain::CreateDescriptorSetLayouts()
+   VkDescriptorSetLayout setLayouts[] = 
+   { 
+     gl_VkDescriptorSetLayout, 
+-    gl_VkDescSetLayoutTexture,
+-    gl_VkDescSetLayoutTexture,
+-    gl_VkDescSetLayoutTexture,
+     gl_VkDescSetLayoutTexture
+   };
+ 
+@@ -69,7 +68,7 @@ void SvkMain::CreateDescriptorSetLayouts()
+   // create default layout
+   VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+   pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+-  pipelineLayoutInfo.setLayoutCount = 5;
++  pipelineLayoutInfo.setLayoutCount = 2;
+   pipelineLayoutInfo.pSetLayouts = setLayouts;
+   pipelineLayoutInfo.pushConstantRangeCount = 1;
+   pipelineLayoutInfo.pPushConstantRanges = &colorScalePushConstant;
+@@ -130,7 +129,7 @@ void SvkMain::CreateDescriptorPools()
+   // create one pool per command buffer to prevent descriptor set update collisions
+   VkDescriptorPoolSize smPoolSize;
+   smPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+-  smPoolSize.descriptorCount = SVK_DESCRIPTOR_MAX_SAMPLER_COUNT;
++  smPoolSize.descriptorCount = 4 * SVK_DESCRIPTOR_MAX_SAMPLER_COUNT;
+ 
+   VkDescriptorPoolCreateInfo smDescPoolInfo = {};
+   smDescPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+diff --git a/SamTSE/Sources/Engine/Graphics/Vulkan/SvkMain.h b/SamTSE/Sources/Engine/Graphics/Vulkan/SvkMain.h
+index 369ee8e..9302f72 100644
+--- a/SamTSE/Sources/Engine/Graphics/Vulkan/SvkMain.h
++++ b/SamTSE/Sources/Engine/Graphics/Vulkan/SvkMain.h
+@@ -253,6 +253,7 @@ public:
+   void DestroyTexturesDataStructure();
+ 
+   VkDescriptorSet GetTextureDescriptor(uint32_t textureId);
++  VkDescriptorSet GetTexturesDescriptor(const uint32_t *textureIds);
+   void FreeDeletedTextures(uint32_t cmdBufferIndex);
+   static void DestroyTextureObject(SvkTextureObject &sto);
+ 
+diff --git a/SamTSE/Sources/Engine/Graphics/Vulkan/SvkSwapchain.cpp b/SamTSE/Sources/Engine/Graphics/Vulkan/SvkSwapchain.cpp
+index a026ede..c5c5110 100644
+--- a/SamTSE/Sources/Engine/Graphics/Vulkan/SvkSwapchain.cpp
++++ b/SamTSE/Sources/Engine/Graphics/Vulkan/SvkSwapchain.cpp
+@@ -33,7 +33,7 @@ void SvkMain::CreateSwapchain(int32_t width, int32_t height)
+   VkSurfaceCapabilitiesKHR capabilities;
+   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gl_VkPhysDevice, gl_VkSurface, &capabilities);
+ 
+-  SDL_Vulkan_GetDrawableSize(_hwndMain, &width, &height);
++  width = 1280; height = 720;
+ 
+   width = CLAMP(width, (int32_t)capabilities.minImageExtent.width, (int32_t)capabilities.maxImageExtent.width);
+   height = CLAMP(height, (int32_t)capabilities.minImageExtent.height, (int32_t)capabilities.maxImageExtent.height);
+@@ -205,7 +205,7 @@ void SvkMain::RecreateSwapchain(int32_t newWidth, int32_t newHeight)
+   vkGetPhysicalDeviceSurfaceCapabilitiesKHR(gl_VkPhysDevice, gl_VkSurface, &capabilities);
+   int32_t width;
+   int32_t height;
+-  SDL_Vulkan_GetDrawableSize(_hwndMain, &width, &height);
++  width = 1280; height = 720;
+ 
+   width = CLAMP(width, (int32_t)capabilities.minImageExtent.width, (int32_t)capabilities.maxImageExtent.width);
+   height = CLAMP(height, (int32_t)capabilities.minImageExtent.height, (int32_t)capabilities.maxImageExtent.height);
+diff --git a/SamTSE/Sources/Engine/Graphics/Vulkan/SvkTextures.cpp b/SamTSE/Sources/Engine/Graphics/Vulkan/SvkTextures.cpp
+index c9eb620..cdd8271 100644
+--- a/SamTSE/Sources/Engine/Graphics/Vulkan/SvkTextures.cpp
++++ b/SamTSE/Sources/Engine/Graphics/Vulkan/SvkTextures.cpp
+@@ -73,49 +73,36 @@ void SvkMain::SetTexture(uint32_t textureUnit, uint32_t textureId, SvkSamplerFla
+ 
+ VkDescriptorSet SvkMain::GetTextureDescriptor(uint32_t textureId)
+ {
+-  SvkTextureObject *psto = gl_VkTextures.TryGet(textureId);
+-  if (psto == nullptr)
+-  {
+-    return VK_NULL_HANDLE;
+-  }
+-
+-  SvkTextureObject &sto = *psto;
++  uint32_t ids[4] = {textureId, textureId, textureId, textureId};
++  return GetTexturesDescriptor(ids);
++}
+ 
+-  // if wasn't uploaded
+-  if (sto.sto_Image == VK_NULL_HANDLE)
+-  {
+-    return VK_NULL_HANDLE;
++VkDescriptorSet SvkMain::GetTexturesDescriptor(const uint32_t *ids)
++{
++  VkDescriptorSet descSet = VK_NULL_HANDLE;
++  VkDescriptorSetAllocateInfo alloc = {};
++  alloc.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
++  alloc.descriptorPool = gl_VkTextureDescPools[gl_VkCmdBufferCurrent];
++  alloc.descriptorSetCount = 1;
++  alloc.pSetLayouts = &gl_VkDescSetLayoutTexture;
++  if (vkAllocateDescriptorSets(gl_VkDevice, &alloc, &descSet) != VK_SUCCESS) return VK_NULL_HANDLE;
++  VkDescriptorImageInfo images[4] = {};
++  VkWriteDescriptorSet writes[4] = {};
++  for (unsigned i=0; i<4; ++i) {
++    auto *texture = gl_VkTextures.TryGet(ids[i]);
++    if (!texture || !texture->sto_Image) texture = gl_VkTextures.TryGet(gl_VkEmptyTextureId);
++    if (!texture || !texture->sto_Image) return VK_NULL_HANDLE;
++    images[i].imageLayout = texture->sto_Layout;
++    images[i].imageView = texture->sto_ImageView;
++    images[i].sampler = GetSampler(texture->sto_SamplerFlags);
++    writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
++    writes[i].dstSet = descSet;
++    writes[i].dstBinding = i;
++    writes[i].descriptorCount = 1;
++    writes[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
++    writes[i].pImageInfo = &images[i];
+   }
+-
+-  VkDescriptorSet descSet;
+-
+-  // allocate new
+-  VkDescriptorSetAllocateInfo setAllocInfo = {};
+-  setAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+-  setAllocInfo.pNext = nullptr;
+-  setAllocInfo.descriptorPool = gl_VkTextureDescPools[gl_VkCmdBufferCurrent];
+-  setAllocInfo.descriptorSetCount = 1;
+-  setAllocInfo.pSetLayouts = &gl_VkDescSetLayoutTexture;
+-
+-  VkResult r = vkAllocateDescriptorSets(gl_VkDevice, &setAllocInfo, &descSet);
+-  VK_CHECKERROR(r);
+-
+-  // prepare info for desc set update
+-  VkDescriptorImageInfo imageInfo = {};
+-  imageInfo.imageLayout = sto.sto_Layout;
+-  imageInfo.imageView = sto.sto_ImageView;
+-  imageInfo.sampler = GetSampler(sto.sto_SamplerFlags);
+-
+-  VkWriteDescriptorSet write = {};
+-  write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+-  write.dstSet = descSet;
+-  write.dstBinding = 0;
+-  write.descriptorCount = 1;
+-  write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+-  write.pImageInfo = &imageInfo;
+-
+-  vkUpdateDescriptorSets(gl_VkDevice, 1, &write, 0, nullptr);
+-
++  vkUpdateDescriptorSets(gl_VkDevice, 4, writes, 0, nullptr);
+   return descSet;
+ }
+ 
+diff --git a/SamTSE/Sources/Engine/Graphics/Vulkan/SvkUtils.cpp b/SamTSE/Sources/Engine/Graphics/Vulkan/SvkUtils.cpp
+index 054d847..1711f37 100644
+--- a/SamTSE/Sources/Engine/Graphics/Vulkan/SvkUtils.cpp
++++ b/SamTSE/Sources/Engine/Graphics/Vulkan/SvkUtils.cpp
+@@ -429,8 +429,8 @@ BOOL SvkMain::PickPhysicalDevice()
+         }
+       }
+ 
+-      VkFormat depthFormats[3] = { VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT };
+-      gl_VkSurfDepthFormat = FindSupportedFormat(depthFormats, 3, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
++      VkFormat depthFormats[1] = { VK_FORMAT_D32_SFLOAT_S8_UINT };
++      gl_VkSurfDepthFormat = FindSupportedFormat(depthFormats, 1, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+ 
+       if (gl_VkSurfColorFormat == VK_FORMAT_UNDEFINED)
+       {
+@@ -441,32 +441,10 @@ BOOL SvkMain::PickPhysicalDevice()
+       // it's guaranteed that maxPushConstantSize will be >=128
+       ASSERT(gl_VkPhProperties.limits.maxPushConstantsSize >= 128);
+ 
+-      // get max sample count
+-      VkSampleCountFlags counts = gl_VkPhProperties.limits.framebufferColorSampleCounts & gl_VkPhProperties.limits.framebufferDepthSampleCounts;
+-      
+-      extern INDEX gfx_vk_iMSAA;
++      // Native PS4 bring-up uses a single-sample color/depth pair.
++      gl_VkMaxSampleCount = VK_SAMPLE_COUNT_1_BIT;
++      CPrintF("Vulkan: VK_SAMPLE_COUNT_1_BIT\n");
+ 
+-      if (counts & VK_SAMPLE_COUNT_8_BIT && gfx_vk_iMSAA >= 3)
+-      {
+-        gl_VkMaxSampleCount = VK_SAMPLE_COUNT_8_BIT;
+-        CPrintF("Vulkan: VK_SAMPLE_COUNT_8_BIT\n");
+-      }
+-      else if (counts & VK_SAMPLE_COUNT_4_BIT && gfx_vk_iMSAA >= 2)
+-      {
+-        gl_VkMaxSampleCount = VK_SAMPLE_COUNT_4_BIT;
+-        CPrintF("Vulkan: VK_SAMPLE_COUNT_4_BIT\n");
+-      }
+-      else if (counts & VK_SAMPLE_COUNT_2_BIT && gfx_vk_iMSAA >= 1)
+-      {
+-        gl_VkMaxSampleCount = VK_SAMPLE_COUNT_2_BIT;
+-        CPrintF("Vulkan: VK_SAMPLE_COUNT_2_BIT\n");
+-      }
+-      else
+-      {
+-        gl_VkMaxSampleCount = VK_SAMPLE_COUNT_1_BIT;
+-        CPrintF("Vulkan: VK_SAMPLE_COUNT_2_BIT\n");
+-      }
+- 
+       gl_vkNumDev = i;     
+       CPrintF("Vulkan: Physical Device Number: %d\n", i);
+       return TRUE;
+diff --git a/SamTSE/Sources/Engine/Graphics/Vulkan/VulkanInclude.h b/SamTSE/Sources/Engine/Graphics/Vulkan/VulkanInclude.h
+index 9f2681a..acc6118 100644
+--- a/SamTSE/Sources/Engine/Graphics/Vulkan/VulkanInclude.h
++++ b/SamTSE/Sources/Engine/Graphics/Vulkan/VulkanInclude.h
+@@ -23,7 +23,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
+ 
+ #ifdef _MSC_VER
+ #define VK_USE_PLATFORM_WIN32_KHR
+-#else
++#elif !defined(__PS4__)
+ #define VK_USE_PLATFORM_XLIB_KHR
+ #define VK_USE_PLATFORM_XCB_KHR
+ #define VK_USE_PLATFORM_DISPLAY_KHR
+diff --git a/SamTSE/Sources/Engine/Ska/RMRender.cpp b/SamTSE/Sources/Engine/Ska/RMRender.cpp
+index d912ab2..1887f8f 100644
+--- a/SamTSE/Sources/Engine/Ska/RMRender.cpp
++++ b/SamTSE/Sources/Engine/Ska/RMRender.cpp
+@@ -89,7 +89,7 @@ static void CalculateRenderingData(CModelInstance &mi);
+ static void ClearRenArrays();
+ 
+ // load our 3x4 matrix from old-fashioned matrix+vector combination
+-inline void MatrixVectorToMatrix12(Matrix12 &m12,const FLOATmatrix3D &m, const FLOAT3D &v)
++void MatrixVectorToMatrix12(Matrix12 &m12,const FLOATmatrix3D &m, const FLOAT3D &v)
+ {
+   m12[ 0] = m(1,1); m12[ 1] = m(1,2); m12[ 2] = m(1,3); m12[ 3] = v(1); 
+   m12[ 4] = m(2,1); m12[ 5] = m(2,2); m12[ 6] = m(2,3); m12[ 7] = v(2); 
+@@ -139,7 +139,7 @@ inline static void TransformVector(FLOAT3 &v, const Matrix12 &m)
+   v[1] = m[4]*x + m[5]*y + m[ 6]*z + m[ 7];
+   v[2] = m[8]*x + m[9]*y + m[10]*z + m[11];
+ }
+-inline void TransformVertex(GFXVertex &v, const Matrix12 &m)
++void TransformVertex(GFXVertex &v, const Matrix12 &m)
+ {
+   float x = v.x;
+   float y = v.y;
+@@ -150,7 +150,7 @@ inline void TransformVertex(GFXVertex &v, const Matrix12 &m)
+ }
+ 
+ // rotate vector with given matrix ( does not translate vector )
+-inline void RotateVector(FLOAT3 &v, const Matrix12 &m)
++void RotateVector(FLOAT3 &v, const Matrix12 &m)
+ {
+   float x = v[0];
+   float y = v[1];
+@@ -216,7 +216,7 @@ void MatrixMultiplyCP(Matrix12 &c,const Matrix12 &m, const Matrix12 &n)
+ }
+ 
+ // make transpose matrix 
+-inline void MatrixTranspose(Matrix12 &r, const Matrix12 &m)
++void MatrixTranspose(Matrix12 &r, const Matrix12 &m)
+ {
+   r[ 0] = m[ 0];
+   r[ 5] = m[ 5];
+diff --git a/SamTSE/Sources/GameMP/Camera.cpp b/SamTSE/Sources/GameMP/Camera.cpp
+index 79b4319..b6a737a 100644
+--- a/SamTSE/Sources/GameMP/Camera.cpp
++++ b/SamTSE/Sources/GameMP/Camera.cpp
+@@ -27,7 +27,7 @@ public:
+ 
+ BOOL _bCameraOn=FALSE;
+ CTFileStream _strScript;
+-BOOL _bInitialized;
++static BOOL _bInitialized;
+ FLOAT _fStartTime;
+ CCameraPos _cp0;
+ CCameraPos _cp1;
+diff --git a/SamTSE/Sources/GameMP/Game.cpp b/SamTSE/Sources/GameMP/Game.cpp
+index 025a6e9..cf8a1a7 100644
+--- a/SamTSE/Sources/GameMP/Game.cpp
++++ b/SamTSE/Sources/GameMP/Game.cpp
+@@ -1134,6 +1134,14 @@ void CGame::GameHandleTimer(void)
+           INDEX iCurrentPlayer = gm_lpLocalPlayers[ iPlayer].lp_iPlayer;
+           CControls &ctrls = gm_actrlControls[ iCurrentPlayer];
+           ctrls.CreateAction(gm_apcPlayers[iCurrentPlayer], paAction, FALSE);
++          static ULONG lastButtons = 0;
++          static FLOAT lastForward = 0;
++          if (paAction.pa_ulButtons != lastButtons || paAction.pa_vTranslation(3) != lastForward) {
++            fprintf(stderr, "PS4 ACTION buttons=%x forward=%g\n", unsigned(paAction.pa_ulButtons), double(paAction.pa_vTranslation(3)));
++            lastButtons = paAction.pa_ulButtons;
++            lastForward = paAction.pa_vTranslation(3);
++          }
++
+           // set the action in the client source object
+           gm_lpLocalPlayers[ iPlayer].lp_pplsPlayerSource->SetAction(paAction);
+ 
+diff --git a/SamTSE/Sources/SeriousSam/MainWindow.cpp b/SamTSE/Sources/SeriousSam/MainWindow.cpp
+index 6797075..95bfd44 100644
+--- a/SamTSE/Sources/SeriousSam/MainWindow.cpp
++++ b/SamTSE/Sources/SeriousSam/MainWindow.cpp
+@@ -286,18 +286,18 @@ void OpenMainWindowNormal( PIX pixSizeI, PIX pixSizeJ)
+   SDL_snprintf( achWindowTitle, sizeof (achWindowTitle), TRANSV("Serious Sam (Window %dx%d)"), pixSizeI, pixSizeJ);
+ #ifdef SE1_VULKAN
+   if( sam_iGfxAPI == 1) {
+-    _uFlags = SDL_WINDOW_VULKAN;
++    _uFlags = 0;
+     if (sam_bBorderLessActive) _uFlags |= SDL_WINDOW_BORDERLESS; 
+-    _hwndMain = SDL_CreateWindow((const char*) strWindow1251ToUtf8(achWindowTitle), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, pixSizeI, pixSizeJ, _uFlags);
++    _hwndMain = SDL_CreateWindow((const char*) strWindow1251ToUtf8(achWindowTitle), 0, 0, pixSizeI, pixSizeJ, _uFlags);
+     if( _hwndMain!=NULL) {
+-      CPrintF("SDL: CreateWindow with flag (SDL_WINDOW_VULKAN) Done.\n");
++      CPrintF("SDL: CreateWindow with flag (0) Done.\n");
+     }
+   } else {
+-    _hwndMain = SDL_CreateWindow((const char*) strWindow1251ToUtf8(achWindowTitle), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, pixSizeI, pixSizeJ, _uFlags);
++    _hwndMain = SDL_CreateWindow((const char*) strWindow1251ToUtf8(achWindowTitle), 0, 0, pixSizeI, pixSizeJ, _uFlags);
+   }
+ #else
+ _uFlags = SDL_WINDOW_OPENGL;
+-  _hwndMain = SDL_CreateWindow((const char*) strWindow1251ToUtf8(achWindowTitle), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, pixSizeI, pixSizeJ, _uFlags);
++  _hwndMain = SDL_CreateWindow((const char*) strWindow1251ToUtf8(achWindowTitle), 0, 0, pixSizeI, pixSizeJ, _uFlags);
+ #endif // SE1_VULKAN
+   if( _hwndMain==NULL) FatalError(TRANS("Cannot open main window!"));
+   SE_UpdateWindowHandle( _hwndMain);
+@@ -337,15 +337,15 @@ void OpenMainWindowFullScreen( PIX pixSizeI, PIX pixSizeJ)
+   SDL_snprintf( achWindowTitle, sizeof (achWindowTitle), TRANSV("Serious Sam (FullScreen %dx%d)"), pixSizeI, pixSizeJ);
+ #ifdef SE1_VULKAN
+   if( sam_iGfxAPI == 1) {
+-    _hwndMain = SDL_CreateWindow((const char*)strWindow1251ToUtf8(achWindowTitle), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, pixSizeI, pixSizeJ, SDL_WINDOW_VULKAN | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS);
++    _hwndMain = SDL_CreateWindow((const char*)strWindow1251ToUtf8(achWindowTitle), 0, 0, pixSizeI, pixSizeJ, 0 | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS);
+     if( _hwndMain!=NULL) {
+-      CPrintF("SDL: CreateWindow with flag (SDL_WINDOW_VULKAN) Done.\n");
++      CPrintF("SDL: CreateWindow with flag (0) Done.\n");
+     }
+   } else {
+-    _hwndMain = SDL_CreateWindow((const char*)strWindow1251ToUtf8(achWindowTitle), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, pixSizeI, pixSizeJ, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS);
++    _hwndMain = SDL_CreateWindow((const char*)strWindow1251ToUtf8(achWindowTitle), 0, 0, pixSizeI, pixSizeJ, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS);
+   }
+ #else
+-    _hwndMain = SDL_CreateWindow((const char*)strWindow1251ToUtf8(achWindowTitle), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, pixSizeI, pixSizeJ, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS);
++    _hwndMain = SDL_CreateWindow((const char*)strWindow1251ToUtf8(achWindowTitle), 0, 0, pixSizeI, pixSizeJ, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_BORDERLESS);
+ #endif // SE1_VULKAN
+   if( _hwndMain==NULL) FatalError(TRANS("Cannot open main window!"));
+   SE_UpdateWindowHandle( _hwndMain);
+diff --git a/SamTSE/Sources/SeriousSam/MenuGadgets.cpp b/SamTSE/Sources/SeriousSam/MenuGadgets.cpp
+index 8d8c1e6..8f6fc25 100644
+--- a/SamTSE/Sources/SeriousSam/MenuGadgets.cpp
++++ b/SamTSE/Sources/SeriousSam/MenuGadgets.cpp
+@@ -635,16 +635,16 @@ void CMGHighScore::Render( CDrawPort *pdp)
+   strHighScores[0][5] = TRANS("Score");
+ 
+   {for (INDEX i=0; i<HIGHSCORE_COUNT; i++) {
+-    switch(_pGame->gm_ahseHighScores[i].hse_gdDifficulty) {
++    switch(static_cast<int>(_pGame->gm_ahseHighScores[i].hse_gdDifficulty)) {
+     default:
+       ASSERT(FALSE);
+ #ifdef PLATFORM_FREEBSD
+ #pragma clang diagnostic push
+ #pragma clang diagnostic ignored "-Wenum-constexpr-conversion"
+-    case (CSessionProperties::GameDifficulty)-100:
++    case -100:
+ #pragma clang diagnostic pop
+ #else
+-	case (CSessionProperties::GameDifficulty)-100:
++	case -100:
+ #endif
+       strHighScores[i+1][1] = "---";
+       continue;
+diff --git a/SamTSE/Sources/SeriousSam/SeriousSam.cpp b/SamTSE/Sources/SeriousSam/SeriousSam.cpp
+index 9437bc4..7554cf8 100644
+--- a/SamTSE/Sources/SeriousSam/SeriousSam.cpp
++++ b/SamTSE/Sources/SeriousSam/SeriousSam.cpp
+@@ -64,10 +64,10 @@ extern FLOAT _fGlobalModAdjuster;
+ extern FLOAT _fGlobalButtonAdjuster;
+ extern FLOAT _fGlobalProfileFOVAdjuster;
+ #ifdef PLATFORM_UNIX
+-ENGINE_API FLOAT _fWeaponFOVAdjuster;
+-ENGINE_API FLOAT _fPlayerFOVAdjuster;
+-ENGINE_API FLOAT _fArmorHeightAdjuster;
+-ENGINE_API FLOAT _fFragScorerHeightAdjuster;
++extern ENGINE_API FLOAT _fWeaponFOVAdjuster;
++extern ENGINE_API FLOAT _fPlayerFOVAdjuster;
++extern ENGINE_API FLOAT _fArmorHeightAdjuster;
++extern ENGINE_API FLOAT _fFragScorerHeightAdjuster;
+ #else
+ extern ENGINE_API FLOAT _fPlayerFOVAdjuster;
+ extern ENGINE_API FLOAT _fWeaponFOVAdjuster;
+@@ -800,6 +800,7 @@ BOOL Init( HINSTANCE hInstance, int nCmdShow, CTString strCmdLine)
+   }
+ 
+   // initialize sound library
++  snd_iFormat = CSoundLibrary::SF_44100_16; // SDL resamples for PS4 AudioOut.
+   snd_iFormat = Clamp( snd_iFormat, (INDEX)CSoundLibrary::SF_NONE, (INDEX)CSoundLibrary::SF_44100_16);
+   _pSound->SetFormat( (enum CSoundLibrary::SoundFormat)snd_iFormat);
+ 
+@@ -987,6 +988,14 @@ void PrintDisplayModeInfo(void)
+   pdp->PutText( strRes, slDPWidth*0.05f, slDPHeight*0.85f, _pGame->LCDGetColor(C_GREEN|255, "display mode"));
+ }
+ 
++bool ss_ps4_gameplay_input()
++{
++  return _pGame && _pGame->gm_bGameOn && !bMenuActive &&
++    _gmRunningGameMode == GM_SINGLE_PLAYER &&
++    _pGame->gm_csConsoleState == CS_OFF &&
++    (_pGame->gm_csComputerState == CS_OFF || _pGame->gm_csComputerState == CS_ONINBACKGROUND);
++}
++
+ // do the main game loop and render screen
+ void DoGame(void)
+ {
+@@ -1774,8 +1783,22 @@ static inline void warn_profiling(void)
+ 
+ 
+ 
++extern "C" void vk_ps4_log_open(const char *path);
++extern "C" void ss_ps4_load_modules(void);
++extern "C" void ss_ps4_radv_extent(int *out_w, int *out_h);
+ int main(int argc, char **argv)
+ {
++  SDL_setenv("SDL_VIDEODRIVER", "dummy", 1);
++  SDL_setenv("SDL_AUDIODRIVER", "ps4", 1);
++  mkdir("/data/serioussamse", 0777);
++  freopen("/data/serioussamse/stdout.log", "w", stdout);
++  freopen("/data/serioussamse/stderr.log", "w", stderr);
++  setvbuf(stdout, NULL, _IONBF, 0);
++  setvbuf(stderr, NULL, _IONBF, 0);
++  vk_ps4_log_open("/data/serioussamse/vulkan.log");
++  chdir("/app0");
++  fprintf(stderr, "PS4 Serious Sam main entered\n");
++  ss_ps4_load_modules();
+   #ifdef BETAEXPIRE
+     // !!! FIXME: This is Unix-centric (at least, non-win32) if put in main().
+     check_beta();
+@@ -1951,6 +1970,12 @@ const INDEX ctDefaultModes = ARRAYCOUNT(aDefaultModes);
+ // start new display mode
+ void StartNewMode( enum GfxAPIType eGfxAPI, INDEX iAdapter, PIX pixSizeI, PIX pixSizeJ, PIX aspSizeI, PIX aspSizeJ, enum DisplayDepth eColorDepth, BOOL bFullScreenMode, BOOL bBorderLessMode)
+ {
++  // The native VideoOut swapchain has a fixed console mode.
++  eGfxAPI = (GfxAPIType)1;
++  sam_iGfxAPI = 1;
++  pixSizeI = 1280; pixSizeJ = 720;
++  aspSizeI = 16; aspSizeJ = 9;
++  bFullScreenMode = FALSE; bBorderLessMode = FALSE;
+   CPrintF( TRANS("\n* START NEW DISPLAY MODE ...\n"));
+ 
+   _pShell->Execute("gam_bEnableAdvancedObserving = 1;");
