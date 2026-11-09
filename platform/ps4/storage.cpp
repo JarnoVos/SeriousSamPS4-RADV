@@ -165,10 +165,21 @@ StorageStatus prepareUserDirectoryBody() {
     }
     if (mkdir(host, 0777) != 0 && errno != EEXIST)
         std::fprintf(stderr, "PS4 user dir %s not created (%d)\n", host, errno);
+    // mkdir honors the root umask, which leaves a directory the game cannot write.
+    if (chmod(host, 0777) != 0)
+        std::fprintf(stderr, "PS4 user dir %s not writable (%d)\n", host, errno);
     if (!restore(original)) return StorageStatus::RestoreFailed;
     const int error = jbc_mount_in_sandbox(host, "ssam_user");
     if (!error) ownedUserMount = true;
     if (!restore(original)) return StorageStatus::RestoreFailed;
+    if (!error) {
+        jbc_cred rooted = original;
+        if (!jbc_jailbreak_cred(&rooted) && !jbc_set_cred(&rooted)) {
+            if (chmod("/ssam_user", 0777) != 0)
+                std::fprintf(stderr, "PS4 user mount not writable (%d)\n", errno);
+            if (!restore(original)) return StorageStatus::RestoreFailed;
+        }
+    }
     if (error) {
         std::fprintf(stderr, "PS4 user dir mount failed %#x, saves stay at %s\n", error, selectedUserRoot);
         return StorageStatus::MountFailed;
