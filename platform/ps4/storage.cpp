@@ -4,18 +4,23 @@
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
+#include <cerrno>
 #include <cstdlib>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace ps4 {
 namespace {
 unsigned ownedMounts;
 bool ownedDataMount;
+bool ownedUserMount;
 
 #ifdef SS_PS4_TSE
+const char* userFolder = "serioussamse";
 const char* dataFolder = "serioussamse-game";
 const char* requiredFiles[] = {"SE1_00.gro", "SE1_00_Extra.gro", "SE1_00_Levels.gro", "SE1_00_Music.gro", "SE1_10b.gro", "Scripts/Game_startup.ini", "Data/NoCRC.lst"};
 #else
+const char* userFolder = "serioussam";
 const char* dataFolder = "serioussam-game";
 const char* requiredFiles[] = {"1_00.gro", "1_00_music.gro", "SE1_10b.gro", "Levels/01_Hatshepsut.wld", "Scripts/Game_startup.ini", "Data/NoCRC.lst"};
 #endif
@@ -118,13 +123,18 @@ StorageStatus mapHostData(const char* systemPath, char* sandboxPath, size_t sand
 }
 
 void releaseGameDataMounts() {
-    if (!ownedMounts && !ownedDataMount) return;
+    if (!ownedMounts && !ownedDataMount && !ownedUserMount) return;
     jbc_cred original{};
     if (jbc_get_cred(&original)) return;
     if (ownedDataMount) {
         const int error = jbc_unmount_in_sandbox("ssam_data");
         if (!restore(original)) return;
         if (!error) ownedDataMount = false;
+    }
+    if (ownedUserMount) {
+        const int error = jbc_unmount_in_sandbox("ssam_user");
+        if (!restore(original)) return;
+        if (!error) ownedUserMount = false;
     }
     for (int slot = 0; slot < 8; ++slot) {
         if (!(ownedMounts & (1u << slot))) continue;
@@ -135,10 +145,49 @@ void releaseGameDataMounts() {
         if (!error) ownedMounts &= ~(1u << slot);
     }
 }
+
+#ifdef SS_PS4_TSE
+static char selectedUserRoot[64] = "/data/serioussamse/";
+#else
+static char selectedUserRoot[64] = "/data/serioussam/";
+#endif
+
+StorageStatus prepareUserDirectoryBody() {
+    char host[256];
+    std::snprintf(host, sizeof(host), "/data/%s", userFolder);
+    std::snprintf(selectedUserRoot, sizeof(selectedUserRoot), "/data/%s/", userFolder);
+    jbc_cred original{};
+    if (jbc_get_cred(&original)) return StorageStatus::ServiceUnavailable;
+    jbc_cred external = original;
+    if (jbc_jailbreak_cred(&external) || jbc_set_cred(&external)) {
+        if (!restore(original)) return StorageStatus::RestoreFailed;
+        return StorageStatus::AccessFailed;
+    }
+    if (mkdir(host, 0777) != 0 && errno != EEXIST)
+        std::fprintf(stderr, "PS4 user dir %s not created (%d)\n", host, errno);
+    if (!restore(original)) return StorageStatus::RestoreFailed;
+    const int error = jbc_mount_in_sandbox(host, "ssam_user");
+    if (!error) ownedUserMount = true;
+    if (!restore(original)) return StorageStatus::RestoreFailed;
+    if (error) {
+        std::fprintf(stderr, "PS4 user dir mount failed %#x, saves stay at %s\n", error, selectedUserRoot);
+        return StorageStatus::MountFailed;
+    }
+    std::snprintf(selectedUserRoot, sizeof(selectedUserRoot), "/ssam_user/");
+    std::fprintf(stderr, "PS4 user dir: %s -> %s\n", host, selectedUserRoot);
+    return StorageStatus::Ready;
+}
+
+const char* userRootStorage() { return selectedUserRoot; }
+}
+
+StorageStatus prepareUserDirectory() { return prepareUserDirectoryBody(); }
+const char* currentUserRoot() { return userRootStorage(); }
 }
 
 static char selectedDataRoot[512];
 const char* ss_ps4_data_root() { return selectedDataRoot; }
+const char* ss_ps4_user_root() { return ps4::currentUserRoot(); }
 
 // Called before engine initialization; keep the mounts alive for all archive reads.
 bool ss_ps4_init_data() {
@@ -170,6 +219,8 @@ bool ss_ps4_init_data() {
     // The engine turns "<root>/Bin/" into the absolute data directory. A real
     // PS4 rejects chdir outside /app0, and leaving main calls a forbidden _exit.
     std::snprintf(selectedDataRoot, sizeof(selectedDataRoot), "%s", active);
+    const ps4::StorageStatus userDir = ps4::prepareUserDirectory();
+    if (userDir == ps4::StorageStatus::RestoreFailed) return false;
     if (chdir("/app0"))
         std::fprintf(stderr, "Continuing without /app0 as the working directory\n");
     std::atexit(ps4::releaseGameDataMounts);

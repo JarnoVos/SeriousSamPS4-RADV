@@ -59,4 +59,5 @@ Replace the icon with your own 512×512 PNG. The label is 16 letters or digits. 
 * SystemService, UserService, VideoOut, Pad, and AudioOut are loaded with `sceSysmoduleLoadModuleInternal` before those libraries are called.
 * SDL video is the dummy driver. RADV owns one 1280×720 swapchain. The menu cannot change that size.
 * Audio is the PS4 48 kHz port. The engine still mixes at its own rate, and the driver resamples.
+* Saves and settings are written through `/ssam_user`, a sandbox mount of `/data/serioussam` or `/data/serioussamse`. The game-data mount is only for reading archives.
 * The engine timer stays single-threaded. Cutscenes stay software-decoded.

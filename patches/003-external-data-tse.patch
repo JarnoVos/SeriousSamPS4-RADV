@@ -1,6 +1,6 @@
 --- a/SamTSE/Sources/Engine/Base/Unix/UnixFileSystem.cpp
 +++ b/SamTSE/Sources/Engine/Base/Unix/UnixFileSystem.cpp
-@@ -107,7 +107,10 @@
+@@ -107,7 +107,11 @@
  
  CUnixFileSystem::CUnixFileSystem(const char *argv0, const char *gamename)
  {
@@ -9,7 +9,9 @@
 +    char dataPath[600];
 +    SDL_snprintf(dataPath, sizeof(dataPath), "%s/Bin/", ss_ps4_data_root());
 +    exePath = SDL_strdup(dataPath);
-     userDir = SDL_strdup("/data/serioussamse/");
+-    userDir = SDL_strdup("/data/serioussamse/");
++    extern const char* ss_ps4_user_root();
++    userDir = SDL_strdup(ss_ps4_user_root());
  }
  
 --- a/SamTSE/Sources/SeriousSam/SeriousSam.cpp
