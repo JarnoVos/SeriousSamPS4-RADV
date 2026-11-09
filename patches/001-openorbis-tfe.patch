@@ -892,3 +892,24 @@ index 9437bc4..7554cf8 100644
    CPrintF( TRANS("\n* START NEW DISPLAY MODE ...\n"));
  
    _pShell->Execute("gam_bEnableAdvancedObserving = 1;");
+--- a/SamTFE/Sources/Engine/Base/Types.h
++++ b/SamTFE/Sources/Engine/Base/Types.h
+@@ -226,6 +226,6 @@
+ 
+     #define _CrtCheckMemory() 1
+-    #define _mkdir(x) mkdir(x, S_IRWXU)
++    #define _mkdir(x) mkdir(x, 0777)
+     #define _open open
+     #define _close close
+     #define _strupr strupr
+--- a/SamTFE/Sources/Engine/Types.h
++++ b/SamTFE/Sources/Engine/Types.h
+@@ -190,6 +190,6 @@
+ 
+     #define _CrtCheckMemory() 1
+-    #define _mkdir(x) mkdir(x, S_IRWXU)
++    #define _mkdir(x) mkdir(x, 0777)
+     #define _open open
+     #define _close close
+     #define _strupr strupr
+

@@ -7,6 +7,7 @@
 #include <cerrno>
 #include <cstdlib>
 #include <sys/stat.h>
+#include <dirent.h>
 #include <unistd.h>
 
 namespace ps4 {
@@ -160,6 +161,24 @@ struct UserDirPrep {
 // Runs with root credentials and the sandbox directory left as it was.
 // A full jailbreak before the mount points getcwd at the real root, so the
 // mount lands outside the sandbox and /ssam_user does not exist afterwards.
+void loosenTree(const char* path, int depth) {
+    if (chmod(path, 0777) != 0 || depth > 6) return;
+    DIR* directory = opendir(path);
+    if (!directory) return;
+    while (dirent* entry = readdir(directory)) {
+        if (entry->d_name[0] == '.' &&
+            (entry->d_name[1] == '\0' || (entry->d_name[1] == '.' && entry->d_name[2] == '\0')))
+            continue;
+        char child[512];
+        std::snprintf(child, sizeof(child), "%s/%s", path, entry->d_name);
+        struct stat info;
+        if (stat(child, &info) != 0) continue;
+        if (S_ISDIR(info.st_mode)) loosenTree(child, depth + 1);
+        else chmod(child, 0666);
+    }
+    closedir(directory);
+}
+
 void prepareUserTree(void* argument) {
     UserDirPrep* prep = static_cast<UserDirPrep*>(argument);
     const char* subs[] = {"", "/SaveGame", "/Controls", "/Scripts", "/Data", "/Temp",
@@ -170,8 +189,7 @@ void prepareUserTree(void* argument) {
         std::snprintf(path, sizeof(path), "%s%s", prep->host, sub);
         if (mkdir(path, 0777) != 0 && errno != EEXIST)
             prep->ans = errno;
-        if (chmod(path, 0777) != 0 && !prep->ans)
-            prep->ans = errno;
+        loosenTree(path, 0);
     }
 }
 
