@@ -17,7 +17,7 @@ Those title IDs are the defaults. Pass your own title ID, version, label, and ic
 
 HDD `/data` is checked first, then USB slots 0–7. Use Serious Sam Classic, the original games, including the GOG and Steam Classic releases. Do not use Serious Sam HD, Fusion, or Revolution. The commercial files are not in this repository.
 
-On a first launch the game creates `/data/serioussam` and `/data/serioussamse` itself, mode `0777`, including `SaveGame` and the other user folders. Nothing has to be prepared by hand, and folders left behind by an older build are loosened the same way. Saves do not depend on a previous permission setup.
+On a first launch the game creates `/data/serioussam` and `/data/serioussamse` itself, mode `0777`, including `SaveGame` and the other user folders.
 
 Copy these files into the game-data folder. `SE1_10b.gro`, `Scripts/`, and `Data/` come from `engine-vk/SamTFE` or `engine-vk/SamTSE`. The `.gro` campaign archives and First Encounter `Levels/` come from your Classic install.
 
