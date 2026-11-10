@@ -15,7 +15,18 @@ The package contains the game executable only. On the console, the game reads a 
 
 Those title IDs are the defaults. Pass your own title ID, version, label, and icon if this package should not replace an existing install.
 
-HDD `/data` is checked first, then USB slots 0–7. The folder layout is the installed game: `1_00.gro` and `Levels/` for the First Encounter, `SE1_00.gro` and the other `SE1_00_*.gro` archives for the Second Encounter, plus `Scripts/Game_startup.ini`.
+HDD `/data` is checked first, then USB slots 0–7. Use Serious Sam Classic, the original games, including the GOG and Steam Classic releases. Do not use Serious Sam HD, Fusion, or Revolution. The commercial files are not in this repository.
+
+On a first launch the game creates `/data/serioussam` and `/data/serioussamse` itself, mode `0777`, including `SaveGame` and the other user folders. Nothing has to be prepared by hand, and folders left behind by an older build are loosened the same way. Saves do not depend on a previous permission setup.
+
+Copy these files into the game-data folder. `SE1_10b.gro`, `Scripts/`, and `Data/` come from `engine-vk/SamTFE` or `engine-vk/SamTSE`. The `.gro` campaign archives and First Encounter `Levels/` come from your Classic install.
+
+| Game | Folder | Required names |
+| --- | --- | --- |
+| First Encounter | `/data/serioussam-game` | `1_00.gro`, `1_00_music.gro`, `Levels/01_Hatshepsut.wld`, `SE1_10b.gro`, `Scripts/Game_startup.ini`, `Data/NoCRC.lst` |
+| Second Encounter | `/data/serioussamse-game` | `SE1_00.gro`, `SE1_00_Extra.gro`, `SE1_00_Levels.gro`, `SE1_00_Music.gro`, `SE1_10b.gro`, `Scripts/Game_startup.ini`, `Data/NoCRC.lst` |
+
+GOG and Steam Classic name the First Encounter campaign archive `1_00c.gro`. This port opens `1_00.gro`, so copy that file and name the copy `1_00.gro`. The Second Encounter archive names already match. Keep the original store files unchanged.
 
 ## What you build with
 
@@ -59,5 +70,5 @@ Replace the icon with your own 512×512 PNG. The label is 16 letters or digits. 
 * SystemService, UserService, VideoOut, Pad, and AudioOut are loaded with `sceSysmoduleLoadModuleInternal` before those libraries are called.
 * SDL video is the dummy driver. RADV owns one 1280×720 swapchain. The menu cannot change that size.
 * Audio is the PS4 48 kHz port. The engine still mixes at its own rate, and the driver resamples.
-* Saves and settings are written through `/ssam_user`, a sandbox mount of `/data/serioussam` or `/data/serioussamse`. The game-data mount is only for reading archives.
+* Saves and settings use `/data/serioussam` or `/data/serioussamse`. Those directories are created on first launch. The game-data folder is only for reading archives.
 * The engine timer stays single-threaded. Cutscenes stay software-decoded.
