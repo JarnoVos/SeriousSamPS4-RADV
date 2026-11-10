@@ -1,17 +1,8 @@
-<img width="1920" height="1080" alt="tfe1" src="https://github.com/user-attachments/assets/ddb1d826-e894-42f1-863c-ec840ca9905f" />
 # Serious Sam PS4 (RADV)
 
 A PS4 port of Serious Sam: The First Encounter and The Second Encounter. The engine stays [SeriousSamClassic-VK](https://github.com/tx00100xt/SeriousSamClassic-VK). The graphics device is Dolphin's published RADV stack, not the older OpenGNM driver. Pad, audio, and the external `/data` game folders follow [Nichlas Ek's SeriousSamPS4](https://github.com/NichlasEk/SeriousSamPS4).
 
 The engine is GPL-2.0. Retail game files are not included. See [THIRD-PARTY.md](THIRD-PARTY.md).
-
-## Screenshots / Video
-
-<img width="1920" height="1080" alt="tfe1" src="https://github.com/user-attachments/assets/664ef7a5-3d2c-47e2-aff2-a91dddaf37d0" />
-<img width="1920" height="1080" alt="tse2" src="https://github.com/user-attachments/assets/9d19a228-0e59-465c-bd30-4b3e823be385" />
-<img width="1920" height="1080" alt="tse1" src="https://github.com/user-attachments/assets/d2ba0c82-686b-4397-a7a2-ec33a81a972e" />
-
-https://github.com/user-attachments/assets/bd35842d-2549-4057-80c6-d689bfa58f66
 
 ## What you install
 
@@ -92,6 +83,13 @@ python3 scripts/package-ps4-radv.py --game tse --version 01.00 \
 ```
 
 Replace the icon with your own 512×512 PNG. The label is 16 letters or digits. Packages are written under `artifacts/radv/`.
+
+## Screenshots / Video (recorded on PS4 Slim 10.50)
+
+<img width="1920" height="1080" alt="tfe1" src="https://github.com/user-attachments/assets/664ef7a5-3d2c-47e2-aff2-a91dddaf37d0" />
+<img width="1920" height="1080" alt="tse1" src="https://github.com/user-attachments/assets/d2ba0c82-686b-4397-a7a2-ec33a81a972e" />
+
+https://github.com/user-attachments/assets/bd35842d-2549-4057-80c6-d689bfa58f66
 
 ## Behaviour that is easy to miss
 
