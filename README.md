@@ -6,27 +6,46 @@ The engine is GPL-2.0. Retail game files are not included. See [THIRD-PARTY.md](
 
 ## What you install
 
-The package contains the game executable only. On the console, the game reads a folder you copy yourself:
+The package contains the game executable only. On the console, each game reads one folder, and that folder is filled from two places: your Classic install, and the engine data at commit `510d36f`.
 
-| Game | Title ID | Game data on the console | Saves and settings |
-| --- | --- | --- | --- |
-| First Encounter | `SSAM00001` | `/data/serioussam-game` | `/data/serioussam` |
-| Second Encounter | `SSAM00002` | `/data/serioussamse-game` | `/data/serioussamse` |
+| Game | Title ID | Game data on the console | Saves and settings | Engine directory |
+| --- | --- | --- | --- | --- |
+| First Encounter | `SSAM00001` | `/data/serioussam-game` | `/data/serioussam` | `engine-vk/SamTFE` |
+| Second Encounter | `SSAM00002` | `/data/serioussamse-game` | `/data/serioussamse` | `engine-vk/SamTSE` |
 
-Those title IDs are the defaults. Pass your own title ID, version, label, and icon if this package should not replace an existing install.
-
-HDD `/data` is checked first, then USB slots 0–7. Use Serious Sam Classic, the original games, including the GOG and Steam Classic releases. Do not use Serious Sam HD, Fusion, or Revolution. The commercial files are not in this repository.
+HDD `/data` is checked first, then USB slots 0–7. Use Serious Sam Classic from GOG or Steam. Serious Sam HD, Fusion, and Revolution do not load. The commercial files are not in this repository.
 
 On a first launch the game creates `/data/serioussam` and `/data/serioussamse` itself, mode `0777`, including `SaveGame` and the other user folders.
 
-Copy these files into the game-data folder. `SE1_10b.gro`, `Scripts/`, and `Data/` come from `engine-vk/SamTFE` or `engine-vk/SamTSE`. The `.gro` campaign archives and First Encounter `Levels/` come from your Classic install.
+### Files from your Classic install
 
-| Game | Folder | Required names |
+Copy these into the game-data folder. GOG and Steam name the First Encounter campaign archive `1_00c.gro`. Copy that file and name the copy `1_00.gro`. Leave the store file unchanged. The Second Encounter names already match.
+
+| Game | Folder | Copy from your Classic install |
 | --- | --- | --- |
-| First Encounter | `/data/serioussam-game` | `1_00.gro`, `1_00_music.gro`, `Levels/01_Hatshepsut.wld`, `SE1_10b.gro`, `Scripts/Game_startup.ini`, `Data/NoCRC.lst` |
-| Second Encounter | `/data/serioussamse-game` | `SE1_00.gro`, `SE1_00_Extra.gro`, `SE1_00_Levels.gro`, `SE1_00_Music.gro`, `SE1_10b.gro`, `Scripts/Game_startup.ini`, `Data/NoCRC.lst` |
+| First Encounter | `/data/serioussam-game` | `1_00.gro`, `1_00_music.gro`, and the whole `Levels/` directory |
+| Second Encounter | `/data/serioussamse-game` | `SE1_00.gro`, `SE1_00_Extra.gro`, `SE1_00_Levels.gro`, `SE1_00_Music.gro` |
 
-GOG and Steam Classic name the First Encounter campaign archive `1_00c.gro`. This port opens `1_00.gro`, so copy that file and name the copy `1_00.gro`. The Second Encounter archive names already match. Keep the original store files unchanged.
+The startup check looks for `Levels/01_Hatshepsut.wld` inside the First Encounter `Levels/` directory.
+
+### Files from the engine
+
+Copy `SE1_10b.gro`, the whole `Scripts/` directory, and the whole `Data/` directory into that same game-data folder. First Encounter takes them from `engine-vk/SamTFE`. Second Encounter takes them from `engine-vk/SamTSE`.
+
+Those three items belong to [SeriousSamClassic-VK](https://github.com/tx00100xt/SeriousSamClassic-VK) at [`510d36f`](https://github.com/tx00100xt/SeriousSamClassic-VK/tree/510d36f901cbe883c56b155b53717e4efdeb6522). They are not inside the PKG. A zip download of this repository leaves `engine-vk` empty, because it is a submodule.
+
+```sh
+git clone --recurse-submodules https://github.com/JarnoVos/SeriousSamPS4-RADV.git
+```
+
+An existing checkout gets the same tree with `git submodule update --init engine-vk`. Copy the three items only. `Sources/`, `Bin/`, and the other engine directories stay where they are.
+
+The game reads the rest of `Scripts/` and `Data/` while it runs. Copying `Scripts/Game_startup.ini` and `Data/NoCRC.lst` by themselves leaves the rest of those directories behind. Before startup, the game also checks these paths, and every `.gro` must begin with `PK`:
+
+| Game | Paths checked at startup |
+| --- | --- |
+| First Encounter | `1_00.gro`, `1_00_music.gro`, `Levels/01_Hatshepsut.wld`, `SE1_10b.gro`, `Scripts/Game_startup.ini`, `Data/NoCRC.lst` |
+| Second Encounter | `SE1_00.gro`, `SE1_00_Extra.gro`, `SE1_00_Levels.gro`, `SE1_00_Music.gro`, `SE1_10b.gro`, `Scripts/Game_startup.ini`, `Data/NoCRC.lst` |
 
 ## What you build with
 
@@ -48,6 +67,8 @@ export SS_JBC_SOURCE=$HOME/src/ps4-libjbc   # bucanero/ps4-libjbc at 835fe016
 ```
 
 ## Build a package
+
+The title IDs above are the defaults. Pass your own title ID, version, label, and icon when this package should not replace an existing install.
 
 ```sh
 bash scripts/build-ps4-radv.sh tfe
